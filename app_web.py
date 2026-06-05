@@ -19,7 +19,7 @@ try:
 except Exception:
     API_KEY = ""
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-2.5-flash"
 
 # ── 옵션 ─────────────────────────────────────────────────────
 CHAR_OPTIONS  = {"500자": 500, "1000자": 1000, "3000자": 3000}
