@@ -1,7 +1,9 @@
+import time
 from datetime import datetime
 
 import streamlit as st
 from google import genai
+from google.genai import errors as genai_errors
 
 # ── 페이지 설정 ───────────────────────────────────────────────
 st.set_page_config(
@@ -17,7 +19,7 @@ try:
 except Exception:
     API_KEY = ""
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-2.0-flash"
 
 # ── 옵션 ─────────────────────────────────────────────────────
 CHAR_OPTIONS  = {"500자": 500, "1000자": 1000, "3000자": 3000}
@@ -61,13 +63,25 @@ class TextGenerator:
             f"- 불필요한 메타 설명이나 안내 문구 없이 본문만 출력"
         )
 
+    def _stream_with_retry(self, prompt: str, max_retries: int = 3):
+        """503 서버 과부하 시 최대 max_retries회 재시도합니다."""
+        for attempt in range(max_retries):
+            try:
+                for chunk in self._client.models.generate_content_stream(
+                    model=MODEL_NAME, contents=prompt
+                ):
+                    if chunk.text:
+                        yield chunk.text
+                return
+            except genai_errors.ServerError as e:
+                if "503" in str(e) and attempt < max_retries - 1:
+                    time.sleep(2 ** attempt)  # 1초, 2초 대기 후 재시도
+                else:
+                    raise
+
     def stream(self, topic: str, char_count: int, text_type: str, tone: str):
         prompt = self._build_prompt(topic, char_count, text_type, tone)
-        for chunk in self._client.models.generate_content_stream(
-            model=MODEL_NAME, contents=prompt
-        ):
-            if chunk.text:
-                yield chunk.text
+        yield from self._stream_with_retry(prompt)
 
     def stream_modify(self, original: str, request: str):
         prompt = (
@@ -78,11 +92,7 @@ class TextGenerator:
             f"- 수정 요청 사항만 반영하고, 나머지 내용·형식·어조는 유지해 주세요\n"
             f"- 불필요한 메타 설명 없이 수정된 본문만 출력"
         )
-        for chunk in self._client.models.generate_content_stream(
-            model=MODEL_NAME, contents=prompt
-        ):
-            if chunk.text:
-                yield chunk.text
+        yield from self._stream_with_retry(prompt)
 
 
 # ── 세션 상태 초기화 ──────────────────────────────────────────
