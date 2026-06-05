@@ -162,19 +162,22 @@ if generate_clicked:
         st.markdown(
             f"**생성 중** — {text_type} · {char_count}자 · {tone}"
         )
-        full_text = st.write_stream(
-            generator.stream(topic.strip(), char_count, text_type, tone)
-        )
-        st.session_state.current_result = full_text
-        st.session_state.history.insert(0, {
-            "topic": topic.strip(),
-            "text_type": text_type,
-            "char_count": char_count,
-            "tone": tone,
-            "result": full_text,
-            "timestamp": datetime.now().strftime("%H:%M"),
-        })
-        st.rerun()
+        try:
+            full_text = st.write_stream(
+                generator.stream(topic.strip(), char_count, text_type, tone)
+            )
+            st.session_state.current_result = full_text
+            st.session_state.history.insert(0, {
+                "topic": topic.strip(),
+                "text_type": text_type,
+                "char_count": char_count,
+                "tone": tone,
+                "result": full_text,
+                "timestamp": datetime.now().strftime("%H:%M"),
+            })
+            st.rerun()
+        except Exception as e:
+            st.error(f"오류가 발생했습니다:\n\n{e}")
 
 # ── 결과 영역 ─────────────────────────────────────────────────
 if st.session_state.current_result:
@@ -216,16 +219,19 @@ if st.session_state.current_result:
             st.error("수정 요청 내용을 입력해 주세요.")
         else:
             st.markdown(f"**수정 중** — {modify_req}")
-            modified = st.write_stream(
-                generator.stream_modify(result, modify_req.strip())
-            )
-            st.session_state.current_result = modified
-            st.session_state.history.insert(0, {
-                "topic": f"[수정] {modify_req[:30]}",
-                "text_type": text_type,
-                "char_count": char_count,
-                "tone": tone,
-                "result": modified,
-                "timestamp": datetime.now().strftime("%H:%M"),
-            })
-            st.rerun()
+            try:
+                modified = st.write_stream(
+                    generator.stream_modify(result, modify_req.strip())
+                )
+                st.session_state.current_result = modified
+                st.session_state.history.insert(0, {
+                    "topic": f"[수정] {modify_req[:30]}",
+                    "text_type": text_type,
+                    "char_count": char_count,
+                    "tone": tone,
+                    "result": modified,
+                    "timestamp": datetime.now().strftime("%H:%M"),
+                })
+                st.rerun()
+            except Exception as e:
+                st.error(f"수정 중 오류가 발생했습니다:\n\n{e}")
